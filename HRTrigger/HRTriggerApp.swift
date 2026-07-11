@@ -3,36 +3,48 @@ import HealthKit
 
 @main
 struct HRTriggerApp: App {
-    private let monitor = HeartRateMonitor()
+    @StateObject private var monitor = HeartRateMonitor()
 
     var body: some Scene {
         WindowGroup {
-            Text("HR Trigger attivo")
+            Text(monitor.status)
+                .multilineTextAlignment(.center)
+                .padding()
                 .onAppear { monitor.start() }
         }
     }
 }
 
-final class HeartRateMonitor {
+final class HeartRateMonitor: ObservableObject {
+    @Published var status: String = "Avvio..."
+
     private let healthStore = HKHealthStore()
 
     // Sostituisci con l'URL del tuo backend (es. dietro Tailscale)
     private let backendURL = URL(string: "https://tuo-backend.ts.net/hr-alert")!
 
     func start() {
-        guard HKHealthStore.isHealthDataAvailable() else { return }
+        guard HKHealthStore.isHealthDataAvailable() else {
+            status = "HealthKit non disponibile su questo dispositivo"
+            return
+        }
 
         let highHR = HKObjectType.categoryType(forIdentifier: .highHeartRateEvent)!
         let lowHR = HKObjectType.categoryType(forIdentifier: .lowHeartRateEvent)!
         let types: Set<HKObjectType> = [highHR, lowHR]
 
+        status = "Richiesta autorizzazione HealthKit..."
+
         healthStore.requestAuthorization(toShare: nil, read: types) { [weak self] success, error in
-            guard success else {
-                print("Autorizzazione HealthKit fallita: \(error?.localizedDescription ?? "sconosciuto")")
-                return
+            DispatchQueue.main.async {
+                guard success else {
+                    self?.status = "Autorizzazione HealthKit fallita: \(error?.localizedDescription ?? "sconosciuto")"
+                    return
+                }
+                self?.status = "Autorizzato — in ascolto eventi HR"
+                self?.observe(highHR, kind: "high")
+                self?.observe(lowHR, kind: "low")
             }
-            self?.observe(highHR, kind: "high")
-            self?.observe(lowHR, kind: "low")
         }
     }
 
@@ -40,6 +52,9 @@ final class HeartRateMonitor {
         let query = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completion, error in
             defer { completion() }
             guard error == nil else { return }
+            DispatchQueue.main.async {
+                self?.status = "Ultimo evento: \(kind) alle \(Self.timeFormatter.string(from: Date()))"
+            }
             self?.notifyBackend(kind: kind)
         }
         healthStore.execute(query)
@@ -49,6 +64,12 @@ final class HeartRateMonitor {
             }
         }
     }
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .medium
+        return formatter
+    }()
 
     private func notifyBackend(kind: String) {
         var request = URLRequest(url: backendURL)
