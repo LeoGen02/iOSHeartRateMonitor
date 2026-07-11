@@ -1,0 +1,22 @@
+name: HRTrigger
+options:
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  HRTrigger:
+    type: application
+    platform: iOS
+    sources:
+      - HRTrigger
+    info:
+      path: Generated/Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSHealthShareUsageDescription: "Serve a rilevare eventi di battito cardiaco alto o basso e attivare l'automazione."
+    entitlements:
+      path: Generated/HRTrigger.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.leonardo.hrtrigger
+      TARGETED_DEVICE_FAMILY: "1"

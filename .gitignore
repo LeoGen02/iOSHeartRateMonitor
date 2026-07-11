@@ -1,0 +1,19 @@
+# Generato da XcodeGen in CI — non versionare
+*.xcodeproj/
+Generated/
+
+# Build artifacts
+build/
+DerivedData/
+*.xcarchive
+*.ipa
+
+# Xcode / macOS junk
+.DS_Store
+xcuserdata/
+*.xcuserstate
+.swiftpm/
+.build/
+
+# Claude Code local harness state
+.claude/

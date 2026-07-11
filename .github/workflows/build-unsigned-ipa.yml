@@ -1,0 +1,40 @@
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installa XcodeGen e genera il progetto Xcode
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Archive senza firma
+        run: |
+          xcodebuild archive \
+            -project HRTrigger.xcodeproj \
+            -scheme HRTrigger \
+            -configuration Release \
+            -archivePath "${{ runner.temp }}/HRTrigger.xcarchive" \
+            -destination "generic/platform=iOS" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Impacchetta l'ipa a mano (zip del .app, nessuna firma coinvolta)
+        run: |
+          mkdir -p "${{ runner.temp }}/Payload"
+          cp -r "${{ runner.temp }}/HRTrigger.xcarchive/Products/Applications/HRTrigger.app" "${{ runner.temp }}/Payload/"
+          cd "${{ runner.temp }}"
+          zip -r HRTrigger-unsigned.ipa Payload
+
+      - name: Carica l'ipa come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HRTrigger-unsigned
+          path: ${{ runner.temp }}/HRTrigger-unsigned.ipa
